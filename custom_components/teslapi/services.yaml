@@ -1,0 +1,55 @@
+start_archive:
+  fields:
+    trigger:
+      required: false
+      default: "ha"
+      example: "ha"
+      selector:
+        select:
+          options:
+            - "ha"
+            - "manual"
+    delete_after:
+      required: false
+      default: false
+      selector:
+        boolean:
+
+cancel_archive:
+
+start_music_sync:
+  fields:
+    mode:
+      required: false
+      default: "full"
+      example: "full"
+      selector:
+        select:
+          options:
+            - "full"
+            - "selected"
+            - "random"
+            - "recent"
+    paths:
+      required: false
+      example: "['/Amy Winehouse', '/Dire Straits']"
+      selector:
+        object:
+    count:
+      required: false
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    type:
+      required: false
+      default: "artist"
+      selector:
+        select:
+          options:
+            - "artist"
+            - "album"
+
+cancel_music_sync:

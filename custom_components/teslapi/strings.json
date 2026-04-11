@@ -1,0 +1,159 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to TeslaPi",
+        "description": "Enter the IP address or hostname of your TeslaPi device.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "scan_interval": "Polling interval (seconds)"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the TeslaPi Raspberry Pi",
+          "port": "HTTP port (default: 80)",
+          "scan_interval": "How often to poll for status updates (10-300 seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to TeslaPi. Verify the host and port are correct and the device is online.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This TeslaPi device is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "TeslaPi Options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often to poll for status updates (10-300 seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status"
+      },
+      "cpu_temp": {
+        "name": "CPU temperature"
+      },
+      "cam_storage_pct": {
+        "name": "Dashcam storage"
+      },
+      "music_storage_pct": {
+        "name": "Music storage"
+      },
+      "last_archive": {
+        "name": "Last archive"
+      },
+      "last_music_sync": {
+        "name": "Last music sync"
+      },
+      "artists_synced": {
+        "name": "Artists synced"
+      },
+      "wifi_signal": {
+        "name": "WiFi signal"
+      },
+      "uptime": {
+        "name": "Uptime"
+      },
+      "ram_usage": {
+        "name": "RAM usage"
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "Online"
+      },
+      "gadget_active": {
+        "name": "USB gadget active"
+      },
+      "archive_running": {
+        "name": "Archive running"
+      },
+      "music_syncing": {
+        "name": "Music syncing"
+      },
+      "server_reachable": {
+        "name": "Archive server reachable"
+      },
+      "auto_sync_enabled": {
+        "name": "Auto-sync enabled"
+      }
+    },
+    "button": {
+      "archive_now": {
+        "name": "Archive now"
+      },
+      "sync_music": {
+        "name": "Sync music"
+      },
+      "reboot": {
+        "name": "Reboot"
+      }
+    },
+    "switch": {
+      "gadget": {
+        "name": "USB gadget"
+      },
+      "auto_sync": {
+        "name": "Auto-sync"
+      }
+    }
+  },
+  "services": {
+    "start_archive": {
+      "name": "Start archive",
+      "description": "Start a dashcam archive job on the TeslaPi device.",
+      "fields": {
+        "trigger": {
+          "name": "Trigger",
+          "description": "Source of the trigger (ha or manual)."
+        },
+        "delete_after": {
+          "name": "Delete after archive",
+          "description": "Delete clips from the dashcam after successful archive."
+        }
+      }
+    },
+    "cancel_archive": {
+      "name": "Cancel archive",
+      "description": "Cancel the currently running archive job."
+    },
+    "start_music_sync": {
+      "name": "Start music sync",
+      "description": "Start a music sync job on the TeslaPi device.",
+      "fields": {
+        "mode": {
+          "name": "Mode",
+          "description": "Sync mode: selected, random, recent, or full."
+        },
+        "paths": {
+          "name": "Paths",
+          "description": "Artist or album paths to sync (for selected mode)."
+        },
+        "count": {
+          "name": "Count",
+          "description": "Number of items for random or recent mode."
+        },
+        "type": {
+          "name": "Type",
+          "description": "Item type for random mode: artist or album."
+        }
+      }
+    },
+    "cancel_music_sync": {
+      "name": "Cancel music sync",
+      "description": "Cancel the currently running music sync job."
+    }
+  }
+}
