@@ -1,0 +1,5 @@
+{
+  "name": "TeslaPi",
+  "render_readme": true,
+  "domains": ["binary_sensor", "button", "sensor", "switch"]
+}
