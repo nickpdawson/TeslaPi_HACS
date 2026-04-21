@@ -19,6 +19,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
+    CONF_EXTRA_HOSTS,
     CONF_HOST,
     CONF_PORT,
     CONF_SCAN_INTERVAL,
@@ -203,6 +204,12 @@ class TeslaPiOptionsFlow(OptionsFlow):
                         vol.Coerce(int),
                         vol.Range(min=MIN_SCAN_INTERVAL, max=MAX_SCAN_INTERVAL),
                     ),
+                    vol.Optional(
+                        CONF_EXTRA_HOSTS,
+                        default=self.config_entry.options.get(
+                            CONF_EXTRA_HOSTS, ""
+                        ),
+                    ): str,
                 }
             ),
         )

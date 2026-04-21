@@ -34,10 +34,12 @@
       "init": {
         "title": "TeslaPi Options",
         "data": {
-          "scan_interval": "Polling interval (seconds)"
+          "scan_interval": "Polling interval (seconds)",
+          "extra_hosts": "Fallback hosts"
         },
         "data_description": {
-          "scan_interval": "How often to poll for status updates (10-300 seconds)"
+          "scan_interval": "How often to poll for status updates (10-300 seconds)",
+          "extra_hosts": "Comma-separated alternative IPs or hostnames to try if the primary is unreachable (e.g. 10.200.9.222, teslapi.local)"
         }
       }
     }
