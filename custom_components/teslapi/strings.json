@@ -14,6 +14,10 @@
           "port": "HTTP port (default: 80)",
           "scan_interval": "How often to poll for status updates (10-300 seconds)"
         }
+      },
+      "zeroconf_confirm": {
+        "title": "TeslaPi Discovered",
+        "description": "A TeslaPi device was found at {host}:{port}. Would you like to add it?"
       }
     },
     "error": {
@@ -21,7 +25,8 @@
       "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "This TeslaPi device is already configured."
+      "already_configured": "This TeslaPi device is already configured.",
+      "cannot_connect": "Discovered TeslaPi device is not responding."
     }
   },
   "options": {

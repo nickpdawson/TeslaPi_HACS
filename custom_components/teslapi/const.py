@@ -17,6 +17,7 @@ MAX_SCAN_INTERVAL = 300
 CONF_HOST = "host"
 CONF_PORT = "port"
 CONF_SCAN_INTERVAL = "scan_interval"
+CONF_EXTRA_HOSTS = "extra_hosts"
 
 # API endpoints
 API_HEALTH = "/api/health"

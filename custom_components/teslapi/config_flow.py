@@ -1,4 +1,10 @@
-"""Config flow for TeslaPi integration."""
+"""Config flow for TeslaPi integration.
+
+Supports three discovery methods:
+- Manual setup (user enters host/port)
+- Zeroconf/mDNS auto-discovery (_teslapi._tcp.local)
+- DHCP discovery (hostname starting with "teslapi")
+"""
 
 from __future__ import annotations
 
@@ -7,6 +13,7 @@ from typing import Any
 import aiohttp
 import voluptuous as vol
 
+from homeassistant.components import zeroconf as zc
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -29,6 +36,75 @@ class TeslaPiConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for TeslaPi."""
 
     VERSION = 1
+
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self._discovered_host: str | None = None
+        self._discovered_port: int = DEFAULT_PORT
+
+    async def async_step_zeroconf(
+        self, discovery_info: zc.ZeroconfServiceInfo
+    ) -> ConfigFlowResult:
+        """Handle Zeroconf/mDNS discovery of a TeslaPi device."""
+        host = str(discovery_info.host)
+        port = discovery_info.port or DEFAULT_PORT
+
+        LOGGER.info("TeslaPi discovered via mDNS at %s:%s", host, port)
+
+        # Set unique ID from host to prevent duplicate entries
+        await self.async_set_unique_id(f"{host}:{port}")
+        self._abort_if_unique_id_configured(updates={CONF_HOST: host, CONF_PORT: port})
+
+        self._discovered_host = host
+        self._discovered_port = port
+
+        # Show confirmation to user
+        self.context["title_placeholders"] = {"name": f"TeslaPi ({host})"}
+        return await self.async_step_zeroconf_confirm()
+
+    async def async_step_zeroconf_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Confirm Zeroconf discovery."""
+        if user_input is not None:
+            host = self._discovered_host
+            port = self._discovered_port
+
+            try:
+                info = await self._test_connection(host, port)
+            except CannotConnect:
+                return self.async_abort(reason="cannot_connect")
+
+            title = f"{DEFAULT_NAME} ({info.get('hostname', host)})"
+            return self.async_create_entry(
+                title=title,
+                data={CONF_HOST: host, CONF_PORT: port},
+                options={CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL},
+            )
+
+        return self.async_show_form(
+            step_id="zeroconf_confirm",
+            description_placeholders={
+                "host": self._discovered_host,
+                "port": str(self._discovered_port),
+            },
+        )
+
+    async def async_step_dhcp(
+        self, discovery_info: Any
+    ) -> ConfigFlowResult:
+        """Handle DHCP discovery."""
+        host = discovery_info.ip
+        LOGGER.info("TeslaPi discovered via DHCP at %s", host)
+
+        await self.async_set_unique_id(f"{host}:{DEFAULT_PORT}")
+        self._abort_if_unique_id_configured(updates={CONF_HOST: host})
+
+        self._discovered_host = host
+        self._discovered_port = DEFAULT_PORT
+
+        self.context["title_placeholders"] = {"name": f"TeslaPi ({host})"}
+        return await self.async_step_zeroconf_confirm()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
