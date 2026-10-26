@@ -86,12 +86,14 @@ def migrate_v1_to_v2(hass: HomeAssistant, entry: ConfigEntry) -> None:
             keeper = device
             continue
         # A second device for the same Pi, left by a fallback host. Move its
-        # entities to the kept device and drop it.
+        # entities to the kept device and drop it. The device belongs to this
+        # entry alone, so remove it outright: HA 2027.8 drops
+        # remove_config_entry_id from async_update_device.
         for reg_entry in er.async_entries_for_device(
             ent_reg, device.id, include_disabled_entities=True
         ):
             ent_reg.async_update_entity(reg_entry.entity_id, device_id=keeper.id)
-        dev_reg.async_update_device(device.id, remove_config_entry_id=entry.entry_id)
+        dev_reg.async_remove_device(device.id)
 
     options = {
         **entry.options,

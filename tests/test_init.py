@@ -194,9 +194,20 @@ async def test_writes_not_retried_on_fallback(
 
 
 async def test_migrate_v1_registry(
-    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Host-based IDs move to entry-ID IDs without changing entity IDs."""
+    update_kwargs: list[dict] = []
+    real_update = dr.DeviceRegistry.async_update_device
+
+    def spy_update(self, device_id, **kwargs):
+        update_kwargs.append(kwargs)
+        return real_update(self, device_id, **kwargs)
+
+    monkeypatch.setattr(dr.DeviceRegistry, "async_update_device", spy_update)
     mock_pi(aioclient_mock)
     entry = make_entry(
         version=1, options={"scan_interval": 30, "extra_hosts": " teslapi.local , "}
@@ -260,6 +271,9 @@ async def test_migrate_v1_registry(
     device_after = dev_reg.async_get(device.id)
     assert device_after.identifiers == {(DOMAIN, entry.entry_id)}
     assert dev_reg.async_get(stray.id) is None
+    # The stray device is removed, not detached with the call HA 2027.8 drops.
+    assert not any("remove_config_entry_id" in kw for kw in update_kwargs)
+    assert "remove_config_entry_id" not in caplog.text
     assert hass.states.get("sensor.my_pi_cpu").state == "41.2"
     # No second set of entities appeared under new names.
     assert hass.states.get("sensor.teslapi_cpu_temperature") is None
