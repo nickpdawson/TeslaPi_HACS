@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from homeassistant.components.media_player import MediaClass, MediaType
+from homeassistant.components.media_player import BrowseError, MediaClass, MediaType
 from homeassistant.components.media_source import (
     BrowseMediaSource,
     MediaSource,
@@ -43,8 +43,11 @@ class TeslaPiMediaSource(MediaSource):
         self.hass = hass
 
     def _get_coordinators(self) -> dict[str, TeslaPiCoordinator]:
-        """Get all TeslaPi coordinators."""
-        return self.hass.data.get(DOMAIN, {})
+        """Get coordinators for loaded TeslaPi entries."""
+        return {
+            entry.entry_id: entry.runtime_data
+            for entry in self.hass.config_entries.async_loaded_entries(DOMAIN)
+        }
 
     async def async_resolve_media(self, item: MediaSourceItem) -> PlayMedia:
         """Resolve a media item to a playable URL."""
@@ -288,7 +291,3 @@ class TeslaPiMediaSource(MediaSource):
             can_expand=True,
             children=children,
         )
-
-
-class BrowseError(Exception):
-    """Error browsing media."""

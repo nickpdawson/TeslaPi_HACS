@@ -7,18 +7,16 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.button import ButtonDeviceClass, ButtonEntity, ButtonEntityDescription
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import (
     API_ARCHIVE_START,
     API_MUSIC_SYNC,
     API_SYSTEM_REBOOT,
-    DOMAIN,
     LOGGER,
 )
-from .coordinator import TeslaPiApiError, TeslaPiCoordinator
+from .coordinator import TeslaPiApiError, TeslaPiConfigEntry, TeslaPiCoordinator
 from .entity import TeslaPiEntity
 
 
@@ -70,11 +68,11 @@ BUTTON_DESCRIPTIONS: tuple[TeslaPiButtonDescription, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: TeslaPiConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up TeslaPi buttons."""
-    coordinator: TeslaPiCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     async_add_entities(
         TeslaPiButton(coordinator, description) for description in BUTTON_DESCRIPTIONS
     )

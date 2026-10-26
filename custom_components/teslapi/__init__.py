@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
@@ -23,7 +22,7 @@ from .const import (
     SERVICE_START_ARCHIVE,
     SERVICE_START_MUSIC_SYNC,
 )
-from .coordinator import TeslaPiApiError, TeslaPiCoordinator
+from .coordinator import TeslaPiApiError, TeslaPiConfigEntry, TeslaPiCoordinator
 
 SERVICE_ARCHIVE_SCHEMA = vol.Schema(
     {
@@ -46,12 +45,11 @@ SERVICE_MUSIC_SYNC_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: TeslaPiConfigEntry) -> bool:
     """Set up TeslaPi from a config entry."""
     coordinator = TeslaPiCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
-
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -64,14 +62,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: TeslaPiConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
 
-    # Unregister services if no more entries
-    if not hass.data.get(DOMAIN):
+    # The entry being unloaded still counts as loaded at this point.
+    remaining = [
+        e for e in hass.config_entries.async_loaded_entries(DOMAIN)
+        if e.entry_id != entry.entry_id
+    ]
+    if unload_ok and not remaining:
         for service in (
             SERVICE_START_ARCHIVE,
             SERVICE_CANCEL_ARCHIVE,
@@ -83,14 +83,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def _async_update_listener(hass: HomeAssistant, entry: TeslaPiConfigEntry) -> None:
     """Handle options update — reload the entry to pick up new scan interval."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 
 def _get_coordinator(hass: HomeAssistant, entry_id: str | None = None) -> TeslaPiCoordinator:
     """Get the coordinator, optionally for a specific entry."""
-    entries = hass.data.get(DOMAIN, {})
+    entries = {
+        e.entry_id: e.runtime_data
+        for e in hass.config_entries.async_loaded_entries(DOMAIN)
+    }
     if entry_id:
         return entries[entry_id]
     # Default to first entry

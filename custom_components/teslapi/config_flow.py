@@ -13,10 +13,11 @@ from typing import Any
 import aiohttp
 import voluptuous as vol
 
-from homeassistant.components import zeroconf as zc
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
 from .const import (
     CONF_EXTRA_HOSTS,
@@ -44,7 +45,7 @@ class TeslaPiConfigFlow(ConfigFlow, domain=DOMAIN):
         self._discovered_port: int = DEFAULT_PORT
 
     async def async_step_zeroconf(
-        self, discovery_info: zc.ZeroconfServiceInfo
+        self, discovery_info: ZeroconfServiceInfo
     ) -> ConfigFlowResult:
         """Handle Zeroconf/mDNS discovery of a TeslaPi device."""
         host = str(discovery_info.host)
@@ -92,7 +93,7 @@ class TeslaPiConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_dhcp(
-        self, discovery_info: Any
+        self, discovery_info: DhcpServiceInfo
     ) -> ConfigFlowResult:
         """Handle DHCP discovery."""
         host = discovery_info.ip

@@ -7,6 +7,7 @@ from typing import Any
 
 import aiohttp
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -25,10 +26,13 @@ from .const import (
 )
 
 
+type TeslaPiConfigEntry = ConfigEntry[TeslaPiCoordinator]
+
+
 class TeslaPiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Coordinator to poll TeslaPi status."""
 
-    def __init__(self, hass: HomeAssistant, entry) -> None:
+    def __init__(self, hass: HomeAssistant, entry: TeslaPiConfigEntry) -> None:
         """Initialize the coordinator."""
         self.port: int = entry.data.get(CONF_PORT, DEFAULT_PORT)
         self._session = async_get_clientsession(hass)
@@ -50,6 +54,7 @@ class TeslaPiCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(
             hass,
             LOGGER,
+            config_entry=entry,
             name=f"{DOMAIN}_{primary_host}",
             update_interval=timedelta(seconds=scan_interval),
         )
