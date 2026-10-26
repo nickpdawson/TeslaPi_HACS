@@ -139,6 +139,8 @@ class TeslaPiClient:
         timeout: aiohttp.ClientTimeout = REQUEST_TIMEOUT,
     ) -> Any:
         """Send one request, logging in again once if the session expired."""
+        if self._password and not self._token and path != API_HEALTH:
+            await self._login(base_url)
         for attempt in range(2):
             async with self._session.request(
                 method,
@@ -227,6 +229,8 @@ class TeslaPiClient:
         The caller must release the response. Status codes other than 401
         are returned as-is so a proxy can pass 206 and 416 through.
         """
+        if self._password and not self._token:
+            await self._login(self.base_url)
         for attempt in range(2):
             try:
                 resp = await self._session.get(
