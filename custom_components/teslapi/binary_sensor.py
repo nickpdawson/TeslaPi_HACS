@@ -36,13 +36,11 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[TeslaPiBinarySensorDescription, ...] = (
     TeslaPiBinarySensorDescription(
         key="archive_running",
         translation_key="archive_running",
-        icon="mdi:cloud-upload",
         value_fn=lambda d: d.get("state") == "archiving",
     ),
     TeslaPiBinarySensorDescription(
         key="music_syncing",
         translation_key="music_syncing",
-        icon="mdi:sync",
         value_fn=lambda d: d.get("music", {}).get("sync_in_progress", False),
     ),
     TeslaPiBinarySensorDescription(
@@ -83,6 +81,13 @@ class TeslaPiBinarySensor(TeslaPiEntity, BinarySensorEntity):
         """Initialize the binary sensor."""
         super().__init__(coordinator, description.key)
         self.entity_description = description
+
+    @property
+    def available(self) -> bool:
+        """Online reports the outage itself, so it never goes unavailable."""
+        if self.entity_description.key == "online":
+            return True
+        return super().available
 
     @property
     def is_on(self) -> bool | None:

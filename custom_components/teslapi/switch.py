@@ -52,7 +52,6 @@ SWITCH_DESCRIPTIONS: tuple[TeslaPiSwitchDescription, ...] = (
     TeslaPiSwitchDescription(
         key="gadget",
         translation_key="gadget",
-        icon="mdi:usb",
         is_on_fn=lambda d: d.get("gadget", {}).get("enabled", False),
         turn_on_fn=_gadget_on,
         turn_off_fn=_gadget_off,
@@ -64,7 +63,6 @@ SWITCH_DESCRIPTIONS: tuple[TeslaPiSwitchDescription, ...] = (
     TeslaPiSwitchDescription(
         key="auto_sync",
         translation_key="auto_sync",
-        icon="mdi:sync-circle",
         is_on_fn=lambda d: (
             d.get("auto_sync", {}).get("enabled", False)
             if d.get("auto_sync")

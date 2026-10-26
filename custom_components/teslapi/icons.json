@@ -1,0 +1,84 @@
+{
+  "entity": {
+    "sensor": {
+      "status": {
+        "default": "mdi:car-connected",
+        "state": {
+          "archiving": "mdi:cloud-upload",
+          "syncing": "mdi:sync",
+          "idle": "mdi:sleep",
+          "error": "mdi:alert-circle",
+          "offline": "mdi:lan-disconnect"
+        }
+      },
+      "cam_storage_pct": {
+        "default": "mdi:camera"
+      },
+      "music_storage_pct": {
+        "default": "mdi:music"
+      },
+      "last_archive": {
+        "default": "mdi:archive-clock"
+      },
+      "last_music_sync": {
+        "default": "mdi:music-clock"
+      },
+      "artists_synced": {
+        "default": "mdi:account-music"
+      },
+      "uptime": {
+        "default": "mdi:timer-outline"
+      },
+      "ram_usage": {
+        "default": "mdi:memory"
+      },
+      "active_host": {
+        "default": "mdi:ip-network"
+      }
+    },
+    "binary_sensor": {
+      "archive_running": {
+        "default": "mdi:cloud-upload"
+      },
+      "music_syncing": {
+        "default": "mdi:sync"
+      }
+    },
+    "button": {
+      "archive_now": {
+        "default": "mdi:cloud-upload"
+      },
+      "sync_music": {
+        "default": "mdi:music-box-multiple"
+      }
+    },
+    "switch": {
+      "gadget": {
+        "default": "mdi:usb",
+        "state": {
+          "off": "mdi:usb-flash-drive-outline"
+        }
+      },
+      "auto_sync": {
+        "default": "mdi:sync-circle",
+        "state": {
+          "off": "mdi:sync-off"
+        }
+      }
+    }
+  },
+  "services": {
+    "start_archive": {
+      "service": "mdi:cloud-upload"
+    },
+    "cancel_archive": {
+      "service": "mdi:cloud-cancel"
+    },
+    "start_music_sync": {
+      "service": "mdi:music-box-multiple"
+    },
+    "cancel_music_sync": {
+      "service": "mdi:music-off"
+    }
+  }
+}

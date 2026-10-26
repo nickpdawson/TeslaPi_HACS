@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.button import ButtonDeviceClass, ButtonEntity, ButtonEntityDescription
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -47,19 +48,18 @@ BUTTON_DESCRIPTIONS: tuple[TeslaPiButtonDescription, ...] = (
     TeslaPiButtonDescription(
         key="archive_now",
         translation_key="archive_now",
-        icon="mdi:cloud-upload",
         press_fn=_press_archive,
     ),
     TeslaPiButtonDescription(
         key="sync_music",
         translation_key="sync_music",
-        icon="mdi:music-box-multiple",
         press_fn=_press_music_sync,
     ),
     TeslaPiButtonDescription(
         key="reboot",
         translation_key="reboot",
         device_class=ButtonDeviceClass.RESTART,
+        entity_category=EntityCategory.CONFIG,
         press_fn=_press_reboot,
     ),
 )

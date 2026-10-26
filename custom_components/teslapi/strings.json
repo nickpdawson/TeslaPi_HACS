@@ -87,7 +87,15 @@
   "entity": {
     "sensor": {
       "status": {
-        "name": "Status"
+        "name": "Status",
+        "state": {
+          "connected": "Connected to car",
+          "archiving": "Archiving",
+          "syncing": "Syncing music",
+          "idle": "Idle",
+          "error": "Error",
+          "offline": "Offline"
+        }
       },
       "cpu_temp": {
         "name": "CPU temperature"
@@ -111,10 +119,13 @@
         "name": "WiFi signal"
       },
       "uptime": {
-        "name": "Uptime"
+        "name": "Last boot"
       },
       "ram_usage": {
         "name": "RAM usage"
+      },
+      "active_host": {
+        "name": "Active host"
       }
     },
     "binary_sensor": {

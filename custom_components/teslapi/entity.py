@@ -5,8 +5,26 @@ from __future__ import annotations
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import CONF_HOST, CONF_PORT, DEFAULT_PORT, DOMAIN
 from .coordinator import TeslaPiCoordinator
+
+
+def device_info(coordinator: TeslaPiCoordinator) -> DeviceInfo:
+    """Device info for a TeslaPi. Keyed on the entry ID, not the address."""
+    entry = coordinator.config_entry
+    system = (coordinator.data or {}).get("system") or {}
+    host = entry.data[CONF_HOST]
+    if ":" in host:
+        host = f"[{host}]"
+    return DeviceInfo(
+        identifiers={(DOMAIN, entry.entry_id)},
+        # The server sends "" when it cannot read these.
+        name=system.get("hostname") or entry.title,
+        manufacturer="TeslaPi",
+        model="Raspberry Pi USB Drive",
+        sw_version=system.get("teslausb_version") or coordinator.server_version,
+        configuration_url=f"http://{host}:{entry.data.get(CONF_PORT, DEFAULT_PORT)}",
+    )
 
 
 class TeslaPiEntity(CoordinatorEntity[TeslaPiCoordinator]):
@@ -19,19 +37,4 @@ class TeslaPiEntity(CoordinatorEntity[TeslaPiCoordinator]):
         super().__init__(coordinator)
         self._key = key
         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{key}"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device info."""
-        system = {}
-        if self.coordinator.data:
-            system = self.coordinator.data.get("system", {})
-
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.coordinator.config_entry.entry_id)},
-            name=system.get("hostname", f"TeslaPi ({self.coordinator.host})"),
-            manufacturer="TeslaPi",
-            model="Raspberry Pi USB Drive",
-            sw_version=system.get("teslausb_version"),
-            configuration_url=f"http://{self.coordinator.host}:{self.coordinator.port}",
-        )
+        self._attr_device_info = device_info(coordinator)
