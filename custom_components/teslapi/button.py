@@ -14,9 +14,8 @@ from .const import (
     API_ARCHIVE_START,
     API_MUSIC_SYNC,
     API_SYSTEM_REBOOT,
-    LOGGER,
 )
-from .coordinator import TeslaPiApiError, TeslaPiConfigEntry, TeslaPiCoordinator
+from .coordinator import TeslaPiConfigEntry, TeslaPiCoordinator
 from .entity import TeslaPiEntity
 
 
@@ -94,8 +93,4 @@ class TeslaPiButton(TeslaPiEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Handle the button press."""
-        try:
-            await self.entity_description.press_fn(self.coordinator)
-        except TeslaPiApiError as err:
-            LOGGER.error("TeslaPi button %s failed: %s", self._key, err)
-            raise
+        await self.entity_description.press_fn(self.coordinator)

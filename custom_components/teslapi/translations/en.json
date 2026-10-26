@@ -7,26 +7,38 @@
         "data": {
           "host": "Host",
           "port": "Port",
+          "password": "Password",
           "scan_interval": "Polling interval (seconds)"
         },
         "data_description": {
           "host": "IP address or hostname of the TeslaPi Raspberry Pi",
           "port": "HTTP port (default: 80)",
+          "password": "Only needed if you set a password in the TeslaPi web UI. Leave empty otherwise.",
           "scan_interval": "How often to poll for status updates (10-300 seconds)"
         }
       },
       "zeroconf_confirm": {
         "title": "TeslaPi Discovered",
         "description": "A TeslaPi device was found at {host}:{port}. Would you like to add it?"
+      },
+      "reauth_confirm": {
+        "title": "TeslaPi password",
+        "description": "The TeslaPi at {host} rejected the stored password or now requires one. Enter the password set in the TeslaPi web UI.",
+        "data": {
+          "password": "Password"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Unable to connect to TeslaPi. Verify the host and port are correct and the device is online.",
-      "unknown": "An unexpected error occurred."
+      "cannot_connect": "Cannot reach the TeslaPi. Check the host and port and that the device is on.",
+      "invalid_auth": "The TeslaPi rejected the password. Use the password set in the TeslaPi web UI.",
+      "unknown": "Unexpected error. Check the Home Assistant log."
     },
     "abort": {
-      "already_configured": "This TeslaPi device is already configured.",
-      "cannot_connect": "Discovered TeslaPi device is not responding."
+      "already_configured": "This TeslaPi is already configured.",
+      "cannot_connect": "The discovered TeslaPi is not responding.",
+      "invalid_auth": "The discovered TeslaPi needs a password. Add it manually.",
+      "reauth_successful": "Password updated."
     }
   },
   "options": {
@@ -161,6 +173,17 @@
     "cancel_music_sync": {
       "name": "Cancel music sync",
       "description": "Cancel the currently running music sync job."
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "The TeslaPi rejected the password. Update it from the integration page."
+    },
+    "api_error": {
+      "message": "TeslaPi request failed: {error}"
+    },
+    "update_failed": {
+      "message": "Cannot read status from the TeslaPi: {error}"
     }
   }
 }

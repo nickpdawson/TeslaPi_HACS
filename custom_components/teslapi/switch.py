@@ -13,9 +13,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .const import (
     API_AUTO_SYNC_CONFIG,
     API_GADGET_TOGGLE,
-    LOGGER,
 )
-from .coordinator import TeslaPiApiError, TeslaPiConfigEntry, TeslaPiCoordinator
+from .coordinator import TeslaPiConfigEntry, TeslaPiCoordinator
 from .entity import TeslaPiEntity
 
 
@@ -127,16 +126,8 @@ class TeslaPiSwitch(TeslaPiEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        try:
-            await self.entity_description.turn_on_fn(self.coordinator)
-        except TeslaPiApiError as err:
-            LOGGER.error("TeslaPi switch %s turn_on failed: %s", self._key, err)
-            raise
+        await self.entity_description.turn_on_fn(self.coordinator)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        try:
-            await self.entity_description.turn_off_fn(self.coordinator)
-        except TeslaPiApiError as err:
-            LOGGER.error("TeslaPi switch %s turn_off failed: %s", self._key, err)
-            raise
+        await self.entity_description.turn_off_fn(self.coordinator)

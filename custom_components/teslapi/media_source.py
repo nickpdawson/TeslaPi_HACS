@@ -180,7 +180,7 @@ class TeslaPiMediaSource(MediaSource):
 
         # Fetch clips filtered by event type
         try:
-            data = await coordinator._api_get(
+            data = await coordinator.client.get(
                 f"/api/archive/clips?event_type={event_type}&limit=200"
             )
         except Exception as err:
@@ -244,7 +244,7 @@ class TeslaPiMediaSource(MediaSource):
 
         # Fetch all clips, filter to this event dir
         try:
-            data = await coordinator._api_get(
+            data = await coordinator.client.get(
                 f"/api/archive/clips?event_type={event_type}&limit=200"
             )
         except Exception as err:

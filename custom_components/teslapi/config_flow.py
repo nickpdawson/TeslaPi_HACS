@@ -8,18 +8,32 @@ Supports three discovery methods:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import aiohttp
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.const import CONF_PASSWORD
 from homeassistant.core import callback
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.selector import (
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
 from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 
+from .api import (
+    TeslaPiAuthError,
+    TeslaPiClient,
+    TeslaPiConnectionError,
+    TeslaPiError,
+)
 from .const import (
+    API_STATUS,
     CONF_EXTRA_HOSTS,
     CONF_HOST,
     CONF_PORT,
@@ -76,6 +90,8 @@ class TeslaPiConfigFlow(ConfigFlow, domain=DOMAIN):
                 info = await self._test_connection(host, port)
             except CannotConnect:
                 return self.async_abort(reason="cannot_connect")
+            except InvalidAuth:
+                return self.async_abort(reason="invalid_auth")
 
             title = f"{DEFAULT_NAME} ({info.get('hostname', host)})"
             return self.async_create_entry(
@@ -122,22 +138,24 @@ class TeslaPiConfigFlow(ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(f"{host}:{port}")
             self._abort_if_unique_id_configured()
 
-            # Test connection
+            password = user_input.get(CONF_PASSWORD) or None
             try:
-                info = await self._test_connection(host, port)
+                info = await self._test_connection(host, port, password)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
             except Exception:
                 LOGGER.exception("Unexpected error during config flow")
                 errors["base"] = "unknown"
             else:
-                title = f"{DEFAULT_NAME} ({info.get('hostname', host)})"
+                title = f"{DEFAULT_NAME} ({info.get('hostname') or host})"
+                data = {CONF_HOST: host, CONF_PORT: port}
+                if password:
+                    data[CONF_PASSWORD] = password
                 return self.async_create_entry(
                     title=title,
-                    data={
-                        CONF_HOST: host,
-                        CONF_PORT: port,
-                    },
+                    data=data,
                     options={
                         CONF_SCAN_INTERVAL: user_input.get(
                             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
@@ -151,6 +169,7 @@ class TeslaPiConfigFlow(ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(CONF_HOST): str,
                     vol.Optional(CONF_PORT, default=DEFAULT_PORT): vol.Coerce(int),
+                    vol.Optional(CONF_PASSWORD): PASSWORD_SELECTOR,
                     vol.Optional(
                         CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
                     ): vol.All(
@@ -162,18 +181,50 @@ class TeslaPiConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def _test_connection(self, host: str, port: int) -> dict[str, Any]:
-        """Test connectivity to the TeslaPi device and return status info."""
-        session = async_get_clientsession(self.hass)
-        url = f"http://{host}:{port}/api/status"
-        try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                if resp.status != 200:
-                    raise CannotConnect(f"HTTP {resp.status}")
-                data = await resp.json()
-                return data.get("system", {})
-        except (aiohttp.ClientError, TimeoutError) as err:
-            raise CannotConnect(str(err)) from err
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Start reauth when the Pi rejects our password or wants one."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the TeslaPi password again."""
+        entry = self._get_reauth_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            password = user_input[CONF_PASSWORD]
+            try:
+                await self._test_connection(
+                    entry.data[CONF_HOST],
+                    entry.data.get(CONF_PORT, DEFAULT_PORT),
+                    password,
+                )
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except Exception:
+                LOGGER.exception("Unexpected error during reauth")
+                errors["base"] = "unknown"
+            else:
+                return self.async_update_reload_and_abort(
+                    entry, data_updates={CONF_PASSWORD: password}
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({vol.Required(CONF_PASSWORD): PASSWORD_SELECTOR}),
+            description_placeholders={"host": entry.data[CONF_HOST]},
+            errors=errors,
+        )
+
+    async def _test_connection(
+        self, host: str, port: int, password: str | None = None
+    ) -> dict[str, Any]:
+        """Log in if a password is given, read status, return the system block."""
+        return await validate_connection(self.hass, host, port, password)
 
     @staticmethod
     @callback
@@ -216,5 +267,35 @@ class TeslaPiOptionsFlow(OptionsFlow):
         )
 
 
+async def validate_connection(
+    hass, host: str, port: int, password: str | None = None
+) -> dict[str, Any]:
+    """Check the device answers and accepts our credentials."""
+    session = async_create_clientsession(
+        hass, auto_cleanup=False, cookie_jar=aiohttp.DummyCookieJar()
+    )
+    client = TeslaPiClient(session, [host], port, password)
+    try:
+        if password:
+            await client.login()
+        data = await client.get(API_STATUS)
+    except TeslaPiAuthError as err:
+        raise InvalidAuth from err
+    except (TeslaPiConnectionError, TeslaPiError) as err:
+        raise CannotConnect(str(err)) from err
+    finally:
+        await session.close()
+    return data.get("system") or {}
+
+
+PASSWORD_SELECTOR = TextSelector(
+    TextSelectorConfig(type=TextSelectorType.PASSWORD, autocomplete="current-password")
+)
+
+
 class CannotConnect(Exception):
     """Error to indicate we cannot connect."""
+
+
+class InvalidAuth(Exception):
+    """The TeslaPi rejected the password, or needs one."""

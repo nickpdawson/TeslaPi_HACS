@@ -19,8 +19,12 @@ CONF_PORT = "port"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_EXTRA_HOSTS = "extra_hosts"
 
+# Cookie name set by POST /api/auth/login on the TeslaPi server.
+SESSION_COOKIE = "teslapi_session"
+
 # API endpoints
 API_HEALTH = "/api/health"
+API_AUTH_LOGIN = "/api/auth/login"
 API_STATUS = "/api/status"
 API_ARCHIVE_START = "/api/archive/start"
 API_ARCHIVE_STATUS = "/api/archive/status"
