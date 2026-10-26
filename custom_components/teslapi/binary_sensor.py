@@ -11,12 +11,10 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
-from .coordinator import TeslaPiCoordinator
+from .coordinator import TeslaPiConfigEntry, TeslaPiCoordinator
 from .entity import TeslaPiEntity
 
 
@@ -36,25 +34,13 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[TeslaPiBinarySensorDescription, ...] = (
         value_fn=lambda d: d is not None,
     ),
     TeslaPiBinarySensorDescription(
-        key="gadget_active",
-        translation_key="gadget_active",
-        icon="mdi:usb",
-        value_fn=lambda d: d.get("gadget", {}).get("enabled", False),
-        attr_fn=lambda d: {
-            "state": d.get("gadget", {}).get("state"),
-            "drives": d.get("gadget", {}).get("drives", []),
-        },
-    ),
-    TeslaPiBinarySensorDescription(
         key="archive_running",
         translation_key="archive_running",
-        icon="mdi:cloud-upload",
         value_fn=lambda d: d.get("state") == "archiving",
     ),
     TeslaPiBinarySensorDescription(
         key="music_syncing",
         translation_key="music_syncing",
-        icon="mdi:sync",
         value_fn=lambda d: d.get("music", {}).get("sync_in_progress", False),
     ),
     TeslaPiBinarySensorDescription(
@@ -66,35 +52,16 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[TeslaPiBinarySensorDescription, ...] = (
             "server_name": d.get("archive", {}).get("server_name"),
         },
     ),
-    TeslaPiBinarySensorDescription(
-        key="auto_sync_enabled",
-        translation_key="auto_sync_enabled",
-        icon="mdi:sync-circle",
-        value_fn=lambda d: (
-            d.get("auto_sync", {}).get("enabled", False)
-            if d.get("auto_sync")
-            else None
-        ),
-        attr_fn=lambda d: (
-            {
-                "check_interval": d.get("auto_sync", {}).get("check_interval"),
-                "last_check_at": d.get("auto_sync", {}).get("last_check_at"),
-                "last_action": d.get("auto_sync", {}).get("last_action"),
-            }
-            if d.get("auto_sync")
-            else {}
-        ),
-    ),
 )
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: TeslaPiConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up TeslaPi binary sensors."""
-    coordinator: TeslaPiCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     async_add_entities(
         TeslaPiBinarySensor(coordinator, description)
         for description in BINARY_SENSOR_DESCRIPTIONS
@@ -114,6 +81,13 @@ class TeslaPiBinarySensor(TeslaPiEntity, BinarySensorEntity):
         """Initialize the binary sensor."""
         super().__init__(coordinator, description.key)
         self.entity_description = description
+
+    @property
+    def available(self) -> bool:
+        """Online reports the outage itself, so it never goes unavailable."""
+        if self.entity_description.key == "online":
+            return True
+        return super().available
 
     @property
     def is_on(self) -> bool | None:

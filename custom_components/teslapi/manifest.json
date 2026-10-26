@@ -3,21 +3,22 @@
   "name": "TeslaPi",
   "codeowners": ["@nickpdawson"],
   "config_flow": true,
-  "documentation": "https://github.com/nickpdawson/TeslaPi",
-  "integration_type": "device",
-  "dependencies": ["media_source"],
-  "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/nickpdawson/TeslaPi/issues",
-  "requirements": ["aiohttp>=3.9.0"],
-  "version": "0.2.0",
-  "zeroconf": [
-    {
-      "type": "_teslapi._tcp.local."
-    }
-  ],
+  "dependencies": ["http", "media_source"],
   "dhcp": [
     {
       "hostname": "teslapi*"
+    }
+  ],
+  "documentation": "https://github.com/nickpdawson/TeslaPi_HACS",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/nickpdawson/TeslaPi_HACS/issues",
+  "loggers": ["custom_components.teslapi"],
+  "requirements": [],
+  "version": "0.3.0",
+  "zeroconf": [
+    {
+      "type": "_teslapi._tcp.local."
     }
   ]
 }

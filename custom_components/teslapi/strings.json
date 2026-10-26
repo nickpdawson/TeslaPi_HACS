@@ -3,51 +3,99 @@
     "step": {
       "user": {
         "title": "Connect to TeslaPi",
-        "description": "Enter the IP address or hostname of your TeslaPi device.",
+        "description": "Enter the IP address or hostname of your TeslaPi. You can paste a URL such as http://teslapi.local/.",
         "data": {
           "host": "Host",
           "port": "Port",
+          "password": "Password",
           "scan_interval": "Polling interval (seconds)"
         },
         "data_description": {
           "host": "IP address or hostname of the TeslaPi Raspberry Pi",
-          "port": "HTTP port (default: 80)",
+          "port": "HTTP port, 1-65535 (default 80)",
+          "password": "Only needed if you set a password in the TeslaPi web UI. Leave empty otherwise.",
           "scan_interval": "How often to poll for status updates (10-300 seconds)"
         }
       },
-      "zeroconf_confirm": {
-        "title": "TeslaPi Discovered",
-        "description": "A TeslaPi device was found at {host}:{port}. Would you like to add it?"
+      "reauth_confirm": {
+        "title": "TeslaPi password",
+        "description": "The TeslaPi at {host} rejected the stored password or now requires one. Enter the password set in the TeslaPi web UI.",
+        "data": {
+          "password": "Password"
+        }
+      },
+      "discovery_confirm": {
+        "title": "TeslaPi found",
+        "description": "Found a TeslaPi at {host}:{port}. Add it?",
+        "data": {
+          "password": "Password"
+        },
+        "data_description": {
+          "password": "Only needed if you set a password in the TeslaPi web UI."
+        }
+      },
+      "reconfigure": {
+        "title": "Change TeslaPi address",
+        "description": "Set the primary address of this TeslaPi. Fallback hosts are in the integration options.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the TeslaPi",
+          "port": "HTTP port, 1-65535"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Unable to connect to TeslaPi. Verify the host and port are correct and the device is online.",
-      "unknown": "An unexpected error occurred."
+      "cannot_connect": "Cannot reach the TeslaPi. Check the host and port and that the device is on.",
+      "invalid_auth": "The TeslaPi rejected the password. Use the password set in the TeslaPi web UI.",
+      "unknown": "Unexpected error. Check the Home Assistant log.",
+      "invalid_host": "Enter an IP address or hostname, for example 192.168.1.50 or teslapi.local."
     },
     "abort": {
-      "already_configured": "This TeslaPi device is already configured.",
-      "cannot_connect": "Discovered TeslaPi device is not responding."
+      "already_configured": "This TeslaPi is already configured.",
+      "cannot_connect": "The discovered TeslaPi is not responding.",
+      "invalid_auth": "The discovered TeslaPi needs a password. Add it manually.",
+      "reauth_successful": "Password updated.",
+      "reconfigure_successful": "TeslaPi address updated."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "TeslaPi Options",
+        "title": "TeslaPi options",
         "data": {
           "scan_interval": "Polling interval (seconds)",
-          "extra_hosts": "Fallback hosts"
+          "extra_hosts": "Fallback hosts",
+          "password": "New password"
         },
         "data_description": {
           "scan_interval": "How often to poll for status updates (10-300 seconds)",
-          "extra_hosts": "Comma-separated alternative IPs or hostnames to try if the primary is unreachable (e.g. 10.200.9.222, teslapi.local)"
+          "extra_hosts": "Other addresses for the same Pi, tried in order when the primary does not answer (for example its Wi-Fi hotspot IP or teslapi.local). They use the same port.",
+          "password": "Leave empty to keep the stored password."
         }
       }
+    },
+    "error": {
+      "invalid_host": "One of the fallback hosts is not an IP address or hostname.",
+      "fallback_port": "Fallback hosts use the same port as the primary host. Remove the port.",
+      "invalid_auth": "The TeslaPi rejected the password.",
+      "cannot_connect": "Cannot reach the TeslaPi to check the password."
     }
   },
   "entity": {
     "sensor": {
       "status": {
-        "name": "Status"
+        "name": "Status",
+        "state": {
+          "connected": "Connected to car",
+          "archiving": "Archiving",
+          "syncing": "Syncing music",
+          "idle": "Idle",
+          "error": "Error",
+          "offline": "Offline"
+        }
       },
       "cpu_temp": {
         "name": "CPU temperature"
@@ -71,18 +119,18 @@
         "name": "WiFi signal"
       },
       "uptime": {
-        "name": "Uptime"
+        "name": "Last boot"
       },
       "ram_usage": {
         "name": "RAM usage"
+      },
+      "active_host": {
+        "name": "Active host"
       }
     },
     "binary_sensor": {
       "online": {
         "name": "Online"
-      },
-      "gadget_active": {
-        "name": "USB gadget active"
       },
       "archive_running": {
         "name": "Archive running"
@@ -92,9 +140,6 @@
       },
       "server_reachable": {
         "name": "Archive server reachable"
-      },
-      "auto_sync_enabled": {
-        "name": "Auto-sync enabled"
       }
     },
     "button": {
@@ -122,6 +167,14 @@
       "name": "Start archive",
       "description": "Start a dashcam archive job on the TeslaPi device.",
       "fields": {
+        "config_entry_id": {
+          "name": "TeslaPi",
+          "description": "The TeslaPi to act on. Required when you have more than one."
+        },
+        "device_id": {
+          "name": "Device",
+          "description": "The TeslaPi device to act on. Use this or the TeslaPi field."
+        },
         "trigger": {
           "name": "Trigger",
           "description": "Source of the trigger (ha or manual)."
@@ -134,19 +187,37 @@
     },
     "cancel_archive": {
       "name": "Cancel archive",
-      "description": "Cancel the currently running archive job."
+      "description": "Cancel the currently running archive job.",
+      "fields": {
+        "config_entry_id": {
+          "name": "TeslaPi",
+          "description": "The TeslaPi to act on. Required when you have more than one."
+        },
+        "device_id": {
+          "name": "Device",
+          "description": "The TeslaPi device to act on. Use this or the TeslaPi field."
+        }
+      }
     },
     "start_music_sync": {
       "name": "Start music sync",
       "description": "Start a music sync job on the TeslaPi device.",
       "fields": {
+        "config_entry_id": {
+          "name": "TeslaPi",
+          "description": "The TeslaPi to act on. Required when you have more than one."
+        },
+        "device_id": {
+          "name": "Device",
+          "description": "The TeslaPi device to act on. Use this or the TeslaPi field."
+        },
         "mode": {
           "name": "Mode",
           "description": "Sync mode: selected, random, recent, or full."
         },
         "paths": {
           "name": "Paths",
-          "description": "Artist or album paths to sync (for selected mode)."
+          "description": "Artist or album folders to sync in selected mode, one per entry."
         },
         "count": {
           "name": "Count",
@@ -160,7 +231,49 @@
     },
     "cancel_music_sync": {
       "name": "Cancel music sync",
-      "description": "Cancel the currently running music sync job."
+      "description": "Cancel the currently running music sync job.",
+      "fields": {
+        "config_entry_id": {
+          "name": "TeslaPi",
+          "description": "The TeslaPi to act on. Required when you have more than one."
+        },
+        "device_id": {
+          "name": "Device",
+          "description": "The TeslaPi device to act on. Use this or the TeslaPi field."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "The TeslaPi rejected the password. Update it from the integration page."
+    },
+    "api_error": {
+      "message": "TeslaPi request failed: {error}"
+    },
+    "update_failed": {
+      "message": "Cannot read status from the TeslaPi: {error}"
+    },
+    "no_entries": {
+      "message": "No TeslaPi is set up and loaded."
+    },
+    "entry_required": {
+      "message": "More than one TeslaPi is set up. Choose one with the TeslaPi or Device field."
+    },
+    "entry_not_found": {
+      "message": "No TeslaPi config entry with ID {entry_id}."
+    },
+    "entry_not_loaded": {
+      "message": "{title} is not loaded. Check that the device is online."
+    },
+    "device_not_found": {
+      "message": "Device {device_id} is not a TeslaPi."
+    },
+    "one_device_only": {
+      "message": "Choose one TeslaPi device per action."
+    },
+    "target_mismatch": {
+      "message": "The TeslaPi and Device fields point at different devices."
     }
   }
 }

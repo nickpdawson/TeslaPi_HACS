@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -13,28 +13,76 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+    EntityCategory,
     UnitOfInformation,
     UnitOfTemperature,
-    UnitOfTime,
 )
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
-from .coordinator import TeslaPiCoordinator
+from .coordinator import TeslaPiConfigEntry, TeslaPiCoordinator
 from .entity import TeslaPiEntity
 
+STATUS_OPTIONS = ["connected", "archiving", "syncing", "idle", "error", "offline"]
 
-def _get_storage_by_label(data: dict, label: str) -> dict | None:
-    """Find a storage entry by label."""
-    for s in data.get("storage", []):
-        if s.get("label") == label:
-            return s
+# Boot time is derived from uptime at poll time, so it drifts by a second
+# or so between polls. Ignore drift below this to keep the state steady.
+BOOT_TIME_TOLERANCE = timedelta(seconds=60)
+
+
+def parse_timestamp(value: Any) -> datetime | None:
+    """Parse a server timestamp. The server stores UTC, sometimes without a zone."""
+    if not value or not isinstance(value, str):
+        return None
+    parsed = dt_util.parse_datetime(value.replace(" ", "T", 1))
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt_util.UTC)
+    return parsed
+
+
+def _storage(data: dict[str, Any], label: str) -> dict[str, Any] | None:
+    for item in data.get("storage") or []:
+        if item.get("label") == label:
+            return item
     return None
+
+
+def _storage_attrs(data: dict[str, Any], label: str) -> dict[str, Any]:
+    if (item := _storage(data, label)) is None:
+        return {}
+    return {
+        "total_bytes": item.get("total_bytes"),
+        "used_bytes": item.get("used_bytes"),
+        "free_bytes": item.get("free_bytes"),
+        "mount_point": item.get("mount_point"),
+    }
+
+
+def _system(data: dict[str, Any]) -> dict[str, Any]:
+    return data.get("system") or {}
+
+
+def _status(data: dict[str, Any]) -> str | None:
+    state = data.get("state")
+    return state if state in STATUS_OPTIONS else None
+
+
+def _ram_mib(data: dict[str, Any]) -> float | None:
+    used = _system(data).get("ram_used_bytes")
+    return round(used / 1048576, 1) if used is not None else None
+
+
+def _boot_time(data: dict[str, Any]) -> datetime | None:
+    uptime = _system(data).get("uptime_seconds")
+    if not uptime:
+        return None
+    return (dt_util.utcnow() - timedelta(seconds=uptime)).replace(microsecond=0)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -49,8 +97,9 @@ SENSOR_DESCRIPTIONS: tuple[TeslaPiSensorDescription, ...] = (
     TeslaPiSensorDescription(
         key="status",
         translation_key="status",
-        value_fn=lambda d: d.get("state"),
-        attr_fn=lambda d: {"timestamp": d.get("timestamp")},
+        device_class=SensorDeviceClass.ENUM,
+        options=STATUS_OPTIONS,
+        value_fn=_status,
     ),
     TeslaPiSensorDescription(
         key="cpu_temp",
@@ -58,81 +107,49 @@ SENSOR_DESCRIPTIONS: tuple[TeslaPiSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda d: d.get("system", {}).get("cpu_temp_celsius"),
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: _system(d).get("cpu_temp_celsius"),
     ),
     TeslaPiSensorDescription(
         key="cam_storage_pct",
         translation_key="cam_storage_pct",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:camera",
-        value_fn=lambda d: (
-            s.get("percent_used") if (s := _get_storage_by_label(d, "Dashcam")) else None
-        ),
-        attr_fn=lambda d: (
-            {
-                "total_bytes": s.get("total_bytes"),
-                "used_bytes": s.get("used_bytes"),
-                "free_bytes": s.get("free_bytes"),
-                "mount_point": s.get("mount_point"),
-            }
-            if (s := _get_storage_by_label(d, "Dashcam"))
-            else {}
-        ),
+        value_fn=lambda d: (_storage(d, "Dashcam") or {}).get("percent_used"),
+        attr_fn=lambda d: _storage_attrs(d, "Dashcam"),
     ),
     TeslaPiSensorDescription(
         key="music_storage_pct",
         translation_key="music_storage_pct",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:music",
-        value_fn=lambda d: (
-            s.get("percent_used") if (s := _get_storage_by_label(d, "Music")) else None
-        ),
-        attr_fn=lambda d: (
-            {
-                "total_bytes": s.get("total_bytes"),
-                "used_bytes": s.get("used_bytes"),
-                "free_bytes": s.get("free_bytes"),
-                "mount_point": s.get("mount_point"),
-            }
-            if (s := _get_storage_by_label(d, "Music"))
-            else {}
-        ),
+        value_fn=lambda d: (_storage(d, "Music") or {}).get("percent_used"),
+        attr_fn=lambda d: _storage_attrs(d, "Music"),
     ),
     TeslaPiSensorDescription(
         key="last_archive",
         translation_key="last_archive",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda d: (
-            datetime.fromisoformat(ts)
-            if (ts := d.get("archive", {}).get("last_archive_at"))
-            else None
-        ),
+        value_fn=lambda d: parse_timestamp((d.get("archive") or {}).get("last_archive_at")),
         attr_fn=lambda d: {
-            "clips": d.get("archive", {}).get("last_archive_clips"),
-            "bytes": d.get("archive", {}).get("last_archive_bytes"),
-            "server": d.get("archive", {}).get("server_name"),
+            "clips": (d.get("archive") or {}).get("last_archive_clips"),
+            "bytes": (d.get("archive") or {}).get("last_archive_bytes"),
+            "server": (d.get("archive") or {}).get("server_name"),
         },
     ),
     TeslaPiSensorDescription(
         key="last_music_sync",
         translation_key="last_music_sync",
         device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=lambda d: (
-            datetime.fromisoformat(ts)
-            if (ts := d.get("music", {}).get("last_sync_at"))
-            else None
-        ),
+        value_fn=lambda d: parse_timestamp((d.get("music") or {}).get("last_sync_at")),
     ),
     TeslaPiSensorDescription(
         key="artists_synced",
         translation_key="artists_synced",
-        icon="mdi:account-music",
         state_class=SensorStateClass.TOTAL,
-        value_fn=lambda d: d.get("music", {}).get("total_artists"),
+        value_fn=lambda d: (d.get("music") or {}).get("total_artists"),
         attr_fn=lambda d: {
-            "total_tracks": d.get("music", {}).get("total_tracks"),
+            "total_tracks": (d.get("music") or {}).get("total_tracks"),
         },
     ),
     TeslaPiSensorDescription(
@@ -141,52 +158,57 @@ SENSOR_DESCRIPTIONS: tuple[TeslaPiSensorDescription, ...] = (
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
-        value_fn=lambda d: d.get("system", {}).get("wifi_signal_dbm"),
+        # The server reports 0 when it cannot read the signal.
+        value_fn=lambda d: _system(d).get("wifi_signal_dbm") or None,
         attr_fn=lambda d: {
-            "ssid": d.get("system", {}).get("wifi_ssid"),
-            "ip_address": d.get("system", {}).get("ip_address"),
+            "ssid": _system(d).get("wifi_ssid"),
+            "ip_address": _system(d).get("ip_address"),
         },
     ),
     TeslaPiSensorDescription(
         key="uptime",
         translation_key="uptime",
-        native_unit_of_measurement=UnitOfTime.SECONDS,
-        device_class=SensorDeviceClass.DURATION,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
-        value_fn=lambda d: d.get("system", {}).get("uptime_seconds"),
+        value_fn=_boot_time,
     ),
     TeslaPiSensorDescription(
         key="ram_usage",
         translation_key="ram_usage",
-        native_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        native_unit_of_measurement=UnitOfInformation.MEBIBYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
-        value_fn=lambda d: (
-            round(d.get("system", {}).get("ram_used_bytes", 0) / 1048576, 1)
-            if d.get("system", {}).get("ram_used_bytes") is not None
-            else None
-        ),
+        value_fn=_ram_mib,
         attr_fn=lambda d: {
-            "total_mb": round(
-                d.get("system", {}).get("ram_total_bytes", 0) / 1048576, 1
-            ),
+            "total_mib": round((_system(d).get("ram_total_bytes") or 0) / 1048576, 1),
         },
     ),
+)
+
+ACTIVE_HOST_DESCRIPTION = SensorEntityDescription(
+    key="active_host",
+    translation_key="active_host",
+    entity_category=EntityCategory.DIAGNOSTIC,
 )
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: TeslaPiConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up TeslaPi sensors."""
-    coordinator: TeslaPiCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
+    coordinator = entry.runtime_data
+    entities: list[SensorEntity] = [
         TeslaPiSensor(coordinator, description) for description in SENSOR_DESCRIPTIONS
-    )
+    ]
+    entities.append(TeslaPiActiveHostSensor(coordinator, ACTIVE_HOST_DESCRIPTION))
+    async_add_entities(entities)
 
 
 class TeslaPiSensor(TeslaPiEntity, SensorEntity):
@@ -202,17 +224,48 @@ class TeslaPiSensor(TeslaPiEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator, description.key)
         self.entity_description = description
+        self._update_value()
+
+    @callback
+    def _update_value(self) -> None:
+        data = self.coordinator.data
+        if not data:
+            self._attr_native_value = None
+            self._attr_extra_state_attributes = None
+            return
+        value = self.entity_description.value_fn(data)
+        old = self._attr_native_value
+        if (
+            self.entity_description.key == "uptime"
+            and isinstance(value, datetime)
+            and isinstance(old, datetime)
+            and abs(value - old) < BOOT_TIME_TOLERANCE
+        ):
+            value = old
+        self._attr_native_value = value
+        self._attr_extra_state_attributes = (
+            self.entity_description.attr_fn(data)
+            if self.entity_description.attr_fn
+            else None
+        )
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._update_value()
+        super()._handle_coordinator_update()
+
+
+class TeslaPiActiveHostSensor(TeslaPiEntity, SensorEntity):
+    """The address the integration is using right now."""
+
+    def __init__(
+        self, coordinator: TeslaPiCoordinator, description: SensorEntityDescription
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, description.key)
+        self.entity_description = description
 
     @property
-    def native_value(self) -> Any:
-        """Return the sensor value."""
-        if not self.coordinator.data:
-            return None
-        return self.entity_description.value_fn(self.coordinator.data)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any] | None:
-        """Return extra state attributes."""
-        if not self.coordinator.data or not self.entity_description.attr_fn:
-            return None
-        return self.entity_description.attr_fn(self.coordinator.data)
+    def native_value(self) -> str:
+        """Return the active host."""
+        return self.coordinator.host
