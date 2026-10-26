@@ -9,7 +9,7 @@ LOGGER = getLogger(__package__)
 
 DOMAIN = "teslapi"
 DEFAULT_NAME = "TeslaPi"
-CONFIG_ENTRY_VERSION = 1
+CONFIG_ENTRY_VERSION = 2
 DEFAULT_PORT = 80
 DEFAULT_SCAN_INTERVAL = 30  # seconds
 MIN_SCAN_INTERVAL = 10
@@ -53,3 +53,35 @@ PLATFORMS = ["binary_sensor", "button", "sensor", "switch"]
 ATTR_SW_VERSION = "sw_version"
 ATTR_HOSTNAME = "hostname"
 ATTR_OS_VERSION = "os_version"
+
+# Entity keys that version 1 entries registered, per platform. Version 1
+# unique IDs were "<host>_<key>"; the migration maps them by key.
+LEGACY_ENTITY_KEYS: dict[str, tuple[str, ...]] = {
+    "sensor": (
+        "status",
+        "cpu_temp",
+        "cam_storage_pct",
+        "music_storage_pct",
+        "last_archive",
+        "last_music_sync",
+        "artists_synced",
+        "wifi_signal",
+        "uptime",
+        "ram_usage",
+    ),
+    "binary_sensor": (
+        "online",
+        "gadget_active",
+        "archive_running",
+        "music_syncing",
+        "server_reachable",
+        "auto_sync_enabled",
+    ),
+    "button": ("archive_now", "sync_music", "reboot"),
+    "switch": ("gadget", "auto_sync"),
+}
+
+# Binary sensors that duplicated the USB gadget and auto-sync switches.
+REMOVED_ENTITY_KEYS: frozenset[tuple[str, str]] = frozenset(
+    {("binary_sensor", "gadget_active"), ("binary_sensor", "auto_sync_enabled")}
+)

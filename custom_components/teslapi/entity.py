@@ -18,7 +18,7 @@ class TeslaPiEntity(CoordinatorEntity[TeslaPiCoordinator]):
         """Initialize the entity."""
         super().__init__(coordinator)
         self._key = key
-        self._attr_unique_id = f"{coordinator.host}_{key}"
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_{key}"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -28,7 +28,7 @@ class TeslaPiEntity(CoordinatorEntity[TeslaPiCoordinator]):
             system = self.coordinator.data.get("system", {})
 
         return DeviceInfo(
-            identifiers={(DOMAIN, self.coordinator.host)},
+            identifiers={(DOMAIN, self.coordinator.config_entry.entry_id)},
             name=system.get("hostname", f"TeslaPi ({self.coordinator.host})"),
             manufacturer="TeslaPi",
             model="Raspberry Pi USB Drive",

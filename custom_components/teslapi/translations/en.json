@@ -121,9 +121,6 @@
       "online": {
         "name": "Online"
       },
-      "gadget_active": {
-        "name": "USB gadget active"
-      },
       "archive_running": {
         "name": "Archive running"
       },
@@ -132,9 +129,6 @@
       },
       "server_reachable": {
         "name": "Archive server reachable"
-      },
-      "auto_sync_enabled": {
-        "name": "Auto-sync enabled"
       }
     },
     "button": {

@@ -34,16 +34,6 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[TeslaPiBinarySensorDescription, ...] = (
         value_fn=lambda d: d is not None,
     ),
     TeslaPiBinarySensorDescription(
-        key="gadget_active",
-        translation_key="gadget_active",
-        icon="mdi:usb",
-        value_fn=lambda d: d.get("gadget", {}).get("enabled", False),
-        attr_fn=lambda d: {
-            "state": d.get("gadget", {}).get("state"),
-            "drives": d.get("gadget", {}).get("drives", []),
-        },
-    ),
-    TeslaPiBinarySensorDescription(
         key="archive_running",
         translation_key="archive_running",
         icon="mdi:cloud-upload",
@@ -63,25 +53,6 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[TeslaPiBinarySensorDescription, ...] = (
         attr_fn=lambda d: {
             "server_name": d.get("archive", {}).get("server_name"),
         },
-    ),
-    TeslaPiBinarySensorDescription(
-        key="auto_sync_enabled",
-        translation_key="auto_sync_enabled",
-        icon="mdi:sync-circle",
-        value_fn=lambda d: (
-            d.get("auto_sync", {}).get("enabled", False)
-            if d.get("auto_sync")
-            else None
-        ),
-        attr_fn=lambda d: (
-            {
-                "check_interval": d.get("auto_sync", {}).get("check_interval"),
-                "last_check_at": d.get("auto_sync", {}).get("last_check_at"),
-                "last_action": d.get("auto_sync", {}).get("last_action"),
-            }
-            if d.get("auto_sync")
-            else {}
-        ),
     ),
 )
 
