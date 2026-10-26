@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to TeslaPi",
-        "description": "Enter the IP address or hostname of your TeslaPi device.",
+        "description": "Enter the IP address or hostname of your TeslaPi. You can paste a URL such as http://teslapi.local/.",
         "data": {
           "host": "Host",
           "port": "Port",
@@ -12,14 +12,10 @@
         },
         "data_description": {
           "host": "IP address or hostname of the TeslaPi Raspberry Pi",
-          "port": "HTTP port (default: 80)",
+          "port": "HTTP port, 1-65535 (default 80)",
           "password": "Only needed if you set a password in the TeslaPi web UI. Leave empty otherwise.",
           "scan_interval": "How often to poll for status updates (10-300 seconds)"
         }
-      },
-      "zeroconf_confirm": {
-        "title": "TeslaPi Discovered",
-        "description": "A TeslaPi device was found at {host}:{port}. Would you like to add it?"
       },
       "reauth_confirm": {
         "title": "TeslaPi password",
@@ -27,33 +23,65 @@
         "data": {
           "password": "Password"
         }
+      },
+      "discovery_confirm": {
+        "title": "TeslaPi found",
+        "description": "Found a TeslaPi at {host}:{port}. Add it?",
+        "data": {
+          "password": "Password"
+        },
+        "data_description": {
+          "password": "Only needed if you set a password in the TeslaPi web UI."
+        }
+      },
+      "reconfigure": {
+        "title": "Change TeslaPi address",
+        "description": "Set the primary address of this TeslaPi. Fallback hosts are in the integration options.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        },
+        "data_description": {
+          "host": "IP address or hostname of the TeslaPi",
+          "port": "HTTP port, 1-65535"
+        }
       }
     },
     "error": {
       "cannot_connect": "Cannot reach the TeslaPi. Check the host and port and that the device is on.",
       "invalid_auth": "The TeslaPi rejected the password. Use the password set in the TeslaPi web UI.",
-      "unknown": "Unexpected error. Check the Home Assistant log."
+      "unknown": "Unexpected error. Check the Home Assistant log.",
+      "invalid_host": "Enter an IP address or hostname, for example 192.168.1.50 or teslapi.local."
     },
     "abort": {
       "already_configured": "This TeslaPi is already configured.",
       "cannot_connect": "The discovered TeslaPi is not responding.",
       "invalid_auth": "The discovered TeslaPi needs a password. Add it manually.",
-      "reauth_successful": "Password updated."
+      "reauth_successful": "Password updated.",
+      "reconfigure_successful": "TeslaPi address updated."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "TeslaPi Options",
+        "title": "TeslaPi options",
         "data": {
           "scan_interval": "Polling interval (seconds)",
-          "extra_hosts": "Fallback hosts"
+          "extra_hosts": "Fallback hosts",
+          "password": "New password"
         },
         "data_description": {
           "scan_interval": "How often to poll for status updates (10-300 seconds)",
-          "extra_hosts": "Comma-separated alternative IPs or hostnames to try if the primary is unreachable (e.g. 10.200.9.222, teslapi.local)"
+          "extra_hosts": "Other addresses for the same Pi, tried in order when the primary does not answer (for example its Wi-Fi hotspot IP or teslapi.local). They use the same port.",
+          "password": "Leave empty to keep the stored password."
         }
       }
+    },
+    "error": {
+      "invalid_host": "One of the fallback hosts is not an IP address or hostname.",
+      "fallback_port": "Fallback hosts use the same port as the primary host. Remove the port.",
+      "invalid_auth": "The TeslaPi rejected the password.",
+      "cannot_connect": "Cannot reach the TeslaPi to check the password."
     }
   },
   "entity": {

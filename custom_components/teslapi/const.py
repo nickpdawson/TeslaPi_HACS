@@ -9,6 +9,7 @@ LOGGER = getLogger(__package__)
 
 DOMAIN = "teslapi"
 DEFAULT_NAME = "TeslaPi"
+CONFIG_ENTRY_VERSION = 1
 DEFAULT_PORT = 80
 DEFAULT_SCAN_INTERVAL = 30  # seconds
 MIN_SCAN_INTERVAL = 10
