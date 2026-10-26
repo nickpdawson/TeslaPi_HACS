@@ -1,0 +1,227 @@
+blueprint:
+  name: TeslaPi - sync music while charging
+  description: >-
+    Start a TeslaPi music sync when the charge cable is plugged in at home,
+    and cancel it when you look like you are leaving: the cable comes out
+    while the driver door is open, or the door opens soon after the cable
+    comes out. Optional phone notifications have Stop and Start buttons.
+  domain: automation
+  source_url: https://github.com/nickpdawson/TeslaPi_HACS/blob/main/blueprints/automation/teslapi/sync_on_charge_cable.yaml
+  input:
+    teslapi_device:
+      name: TeslaPi
+      description: The TeslaPi in this car.
+      selector:
+        device:
+          filter:
+            integration: teslapi
+    charge_cable:
+      name: Charge cable sensor
+      description: Binary sensor that is on while the charge cable is connected.
+      selector:
+        entity:
+          filter:
+            domain: binary_sensor
+    driver_door:
+      name: Driver door sensor
+      description: Binary sensor that is on while the driver door is open.
+      selector:
+        entity:
+          filter:
+            domain: binary_sensor
+    car_home:
+      name: Car at home
+      description: >-
+        Binary sensor (on = home) or device tracker (home) for the car.
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+            - domain: device_tracker
+    people:
+      name: People who must be home
+      description: Leave empty to skip this check.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain: person
+    sync_mode:
+      name: Sync mode
+      default: full
+      selector:
+        select:
+          options:
+            - full
+            - recent
+            - random
+    start_delay:
+      name: Start delay
+      description: Wait this long after plug-in before starting the sync.
+      default: 10
+      selector:
+        number:
+          min: 0
+          max: 300
+          unit_of_measurement: seconds
+    leave_window:
+      name: Leaving window
+      description: >-
+        A driver door opening within this many seconds of unplugging counts
+        as leaving.
+      default: 120
+      selector:
+        number:
+          min: 10
+          max: 900
+          unit_of_measurement: seconds
+    notify_action:
+      name: Notify action
+      description: >-
+        Optional, for example notify.mobile_app_my_phone. Leave empty for no
+        notifications.
+      default: ""
+      selector:
+        text:
+
+mode: restart
+
+variables:
+  teslapi_device: !input teslapi_device
+  car_home: !input car_home
+  people: !input people
+  notify_action: !input notify_action
+
+triggers:
+  - trigger: state
+    entity_id: !input charge_cable
+    from: "off"
+    to: "on"
+    id: cable_connected
+  - trigger: state
+    entity_id: !input charge_cable
+    from: "on"
+    to: "off"
+    id: cable_disconnected
+  - trigger: state
+    entity_id: !input driver_door
+    from: "off"
+    to: "on"
+    id: door_opened
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: TESLAPI_SYNC_STOP
+    id: notify_stop
+  - trigger: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: TESLAPI_SYNC_START
+    id: notify_start
+
+actions:
+  - choose:
+      - alias: Plugged in at home, start a sync
+        conditions:
+          - condition: trigger
+            id: cable_connected
+          - condition: template
+            value_template: "{{ states(car_home) in ['on', 'home'] }}"
+          - condition: template
+            value_template: >-
+              {{ people | count == 0
+                 or people | select('is_state', 'home') | list | count > 0 }}
+        sequence:
+          - delay:
+              seconds: !input start_delay
+          - action: teslapi.start_music_sync
+            data:
+              device_id: "{{ teslapi_device }}"
+              mode: !input sync_mode
+          - if:
+              - condition: template
+                value_template: "{{ notify_action | length > 0 }}"
+            then:
+              - action: "{{ notify_action }}"
+                data:
+                  title: TeslaPi sync started
+                  message: "Music sync started at {{ now().strftime('%H:%M') }}."
+                  data:
+                    actions:
+                      - action: TESLAPI_SYNC_STOP
+                        title: Stop sync
+
+      - alias: Unplugged with the driver door open, cancel the sync
+        conditions:
+          - condition: trigger
+            id: cable_disconnected
+          - condition: state
+            entity_id: !input driver_door
+            state: "on"
+        sequence:
+          - action: teslapi.cancel_music_sync
+            data:
+              device_id: "{{ teslapi_device }}"
+          - if:
+              - condition: template
+                value_template: "{{ notify_action | length > 0 }}"
+            then:
+              - action: "{{ notify_action }}"
+                data:
+                  title: TeslaPi sync cancelled
+                  message: "Sync cancelled at {{ now().strftime('%H:%M') }}. Ready to drive."
+                  data:
+                    actions:
+                      - action: TESLAPI_SYNC_START
+                        title: Start again
+
+      - alias: Door opened soon after unplugging, cancel the sync
+        conditions:
+          - condition: trigger
+            id: door_opened
+          - condition: state
+            entity_id: !input charge_cable
+            state: "off"
+          - condition: not
+            conditions:
+              - condition: state
+                entity_id: !input charge_cable
+                state: "off"
+                for:
+                  seconds: !input leave_window
+        sequence:
+          - action: teslapi.cancel_music_sync
+            data:
+              device_id: "{{ teslapi_device }}"
+          - if:
+              - condition: template
+                value_template: "{{ notify_action | length > 0 }}"
+            then:
+              - action: "{{ notify_action }}"
+                data:
+                  title: TeslaPi sync cancelled
+                  message: "Sync cancelled at {{ now().strftime('%H:%M') }}. Ready to drive."
+                  data:
+                    actions:
+                      - action: TESLAPI_SYNC_START
+                        title: Start again
+
+      - alias: Stop button on the notification
+        conditions:
+          - condition: trigger
+            id: notify_stop
+        sequence:
+          - action: teslapi.cancel_music_sync
+            data:
+              device_id: "{{ teslapi_device }}"
+
+      - alias: Start button on the notification
+        conditions:
+          - condition: trigger
+            id: notify_start
+        sequence:
+          - action: teslapi.start_music_sync
+            data:
+              device_id: "{{ teslapi_device }}"
+              mode: !input sync_mode
