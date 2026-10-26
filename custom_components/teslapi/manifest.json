@@ -1,14 +1,21 @@
 {
   "domain": "teslapi",
   "name": "TeslaPi",
-  "codeowners": ["@nickpdawson"],
+  "codeowners": [
+    "@nickpdawson"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/nickpdawson/TeslaPi",
   "integration_type": "device",
-  "dependencies": ["media_source"],
+  "dependencies": [
+    "http",
+    "media_source"
+  ],
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/nickpdawson/TeslaPi/issues",
-  "requirements": ["aiohttp>=3.9.0"],
+  "requirements": [
+    "aiohttp>=3.9.0"
+  ],
   "version": "0.2.0",
   "zeroconf": [
     {

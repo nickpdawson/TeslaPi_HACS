@@ -10,13 +10,15 @@ from .const import CONFIG_ENTRY_VERSION, DOMAIN, LOGGER, PLATFORMS
 from .coordinator import TeslaPiConfigEntry, TeslaPiCoordinator
 from .migration import migrate_v1_to_v2
 from .services import async_setup_services
+from .views import TeslaPiClipView
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register services once, so they exist even before an entry loads."""
+    """Register services and the clip proxy once for the domain."""
     async_setup_services(hass)
+    hass.http.register_view(TeslaPiClipView(hass))
     return True
 
 

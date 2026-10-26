@@ -38,6 +38,14 @@ API_GADGET_TOGGLE = "/api/gadget/toggle"
 API_AUTO_SYNC_STATUS = "/api/auto-sync/status"
 API_AUTO_SYNC_CONFIG = "/api/auto-sync/config"
 API_SYSTEM_REBOOT = "/api/system/reboot"
+API_ARCHIVE_CLIPS = "/api/archive/clips"
+API_DASHCAM_VIDEO = "/api/dashcam/video"
+
+# Dashcam folders the media browser and clip proxy accept.
+SUPPORTED_EVENT_TYPES = ("SentryClips", "SavedClips", "RecentClips")
+# The server caps one clips page at 200.
+CLIP_PAGE_SIZE = 200
+MAX_CLIP_PAGES = 10
 
 # Service names
 SERVICE_START_ARCHIVE = "start_archive"
