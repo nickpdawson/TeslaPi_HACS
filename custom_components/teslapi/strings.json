@@ -134,6 +134,14 @@
       "name": "Start archive",
       "description": "Start a dashcam archive job on the TeslaPi device.",
       "fields": {
+        "config_entry_id": {
+          "name": "TeslaPi",
+          "description": "The TeslaPi to act on. Required when you have more than one."
+        },
+        "device_id": {
+          "name": "Device",
+          "description": "The TeslaPi device to act on. Use this or the TeslaPi field."
+        },
         "trigger": {
           "name": "Trigger",
           "description": "Source of the trigger (ha or manual)."
@@ -146,19 +154,37 @@
     },
     "cancel_archive": {
       "name": "Cancel archive",
-      "description": "Cancel the currently running archive job."
+      "description": "Cancel the currently running archive job.",
+      "fields": {
+        "config_entry_id": {
+          "name": "TeslaPi",
+          "description": "The TeslaPi to act on. Required when you have more than one."
+        },
+        "device_id": {
+          "name": "Device",
+          "description": "The TeslaPi device to act on. Use this or the TeslaPi field."
+        }
+      }
     },
     "start_music_sync": {
       "name": "Start music sync",
       "description": "Start a music sync job on the TeslaPi device.",
       "fields": {
+        "config_entry_id": {
+          "name": "TeslaPi",
+          "description": "The TeslaPi to act on. Required when you have more than one."
+        },
+        "device_id": {
+          "name": "Device",
+          "description": "The TeslaPi device to act on. Use this or the TeslaPi field."
+        },
         "mode": {
           "name": "Mode",
           "description": "Sync mode: selected, random, recent, or full."
         },
         "paths": {
           "name": "Paths",
-          "description": "Artist or album paths to sync (for selected mode)."
+          "description": "Artist or album folders to sync in selected mode, one per entry."
         },
         "count": {
           "name": "Count",
@@ -172,7 +198,17 @@
     },
     "cancel_music_sync": {
       "name": "Cancel music sync",
-      "description": "Cancel the currently running music sync job."
+      "description": "Cancel the currently running music sync job.",
+      "fields": {
+        "config_entry_id": {
+          "name": "TeslaPi",
+          "description": "The TeslaPi to act on. Required when you have more than one."
+        },
+        "device_id": {
+          "name": "Device",
+          "description": "The TeslaPi device to act on. Use this or the TeslaPi field."
+        }
+      }
     }
   },
   "exceptions": {
@@ -184,6 +220,27 @@
     },
     "update_failed": {
       "message": "Cannot read status from the TeslaPi: {error}"
+    },
+    "no_entries": {
+      "message": "No TeslaPi is set up and loaded."
+    },
+    "entry_required": {
+      "message": "More than one TeslaPi is set up. Choose one with the TeslaPi or Device field."
+    },
+    "entry_not_found": {
+      "message": "No TeslaPi config entry with ID {entry_id}."
+    },
+    "entry_not_loaded": {
+      "message": "{title} is not loaded. Check that the device is online."
+    },
+    "device_not_found": {
+      "message": "Device {device_id} is not a TeslaPi."
+    },
+    "one_device_only": {
+      "message": "Choose one TeslaPi device per action."
+    },
+    "target_mismatch": {
+      "message": "The TeslaPi and Device fields point at different devices."
     }
   }
 }

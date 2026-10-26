@@ -43,6 +43,7 @@ SERVICE_START_ARCHIVE = "start_archive"
 SERVICE_CANCEL_ARCHIVE = "cancel_archive"
 SERVICE_START_MUSIC_SYNC = "start_music_sync"
 SERVICE_CANCEL_MUSIC_SYNC = "cancel_music_sync"
+ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 
 # Platforms
 PLATFORMS = ["binary_sensor", "button", "sensor", "switch"]

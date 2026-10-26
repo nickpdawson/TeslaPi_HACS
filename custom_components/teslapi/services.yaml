@@ -1,5 +1,19 @@
+.target_fields: &target_fields
+  config_entry_id:
+    required: false
+    selector:
+      config_entry:
+        integration: teslapi
+  device_id:
+    required: false
+    selector:
+      device:
+        filter:
+          integration: teslapi
+
 start_archive:
   fields:
+    <<: *target_fields
     trigger:
       required: false
       default: "ha"
@@ -16,9 +30,12 @@ start_archive:
         boolean:
 
 cancel_archive:
+  fields:
+    <<: *target_fields
 
 start_music_sync:
   fields:
+    <<: *target_fields
     mode:
       required: false
       default: "full"
@@ -32,9 +49,10 @@ start_music_sync:
             - "recent"
     paths:
       required: false
-      example: "['/Amy Winehouse', '/Dire Straits']"
+      example: "/Amy Winehouse"
       selector:
-        object:
+        text:
+          multiple: true
     count:
       required: false
       default: 20
@@ -53,3 +71,5 @@ start_music_sync:
             - "album"
 
 cancel_music_sync:
+  fields:
+    <<: *target_fields
